@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>uGym 參加會員</title>
+  <link rel="stylesheet" href="css/main.css">
+<!--  <link href="https://fonts.googleapis.com/css?family=Noto+Sans+TC&display=swap" rel="stylesheet">-->
+  <script src="https://code.jquery.com/jquery-1.12.3.min.js"></script>
+  <script src="js/jquery.twzipcode.min.js"></script>
+
+</head>
+
+<body>
+
+  <!--  ==================== 參加會員 (HTML)=============================-->
+  <div id="memberForm" style=" font-family:'Noto Sans TC'">
+    <h2>參加會員 V0.66</h2>
+    <hr>
+    <div id="addMember" style="font-size: 20px;width: 100%">
+    
+      <div class="formLabel">姓名(必填)</div> <input id="memberName" class="formInput" type="text" placeholder="請輸入您的姓名"><br>
+      <div class="formLabel">性別</div>
+      <select id="memberGender" class="formInput" name="memberGender" style="width: 635px;height: 68px">
+        <option value="男">男</option>
+        <option value="女">女</option>
+        <option value="不透漏">不透漏</option>
+      </select><br>
+
+      <div class="formLabel">生日</div> <input id="memberBirth" class="formInput" type="text" placeholder="請輸入生日，例如 2019-01-01"><br>
+
+      <div class="formLabel">電話</div> <input id="memberPhoneNum" class="formInput" type="text" placeholder="請輸入電話"><br>
+
+      <div class="formLabel">身分字號</div> <input id="memberIdNum" class="formInput" type="text" placeholder="請輸入身分字號"><br>
+      <div style="margin-left: 250px; font-size: 30px;">*身分字號僅作為保險使用，不用做其他用途</div><br>
+
+      <!--      以下 UI 調整有點 tricky，PC 和手機的 Chrome 會不同-->
+      <div class="formLabel">地址</div><div id="twzipcode"></div><br>
+      <div class="formLabel" style="margin-top: 0; margin-bottom: 40px;">&nbsp</div><input id="memberAddress" class="formInput" type="text" placeholder="請輸入地址" style="margin-top: 0; margin-bottom: 50px;">
+      <br>
+      <button class="btn-blue" onclick="addConfirm()" style="margin-left: 250px; width: 635px">確定</button>
+      <div style="margin-left: 250px; font-size: 30px;">*隱私權及資料使用說明</div><br>
+      
+    </div>
+  </div>
+  <!--  ==================== 新增會員 (HTML)=============================-->
+
+  <div id="finishMessage" style="display: none">
+    <h1 style="text-align: left">您已成功加入會員，謝謝!</h1>
+  </div>
+  
+  <div id="ErrorMessage" style="display: none">
+    <h1 style="text-align: left">錯誤</h1>
+  </div>    
+
+  <div id="alreadyMessage" style="display: none">
+    <h1 style="text-align: left">您以前已經加入會員!</h1>
+  </div>
+
+  <script>
+    var memberData = [];
+    var dataToAdd = [];
+    var paramToSend;
+    var inputParamString = location.search;    
+    //var userIdString = location.search;        
+
+    $("#finishMessage").hide(); 
+    
+    // 初始化 TWZIPCODE
+    $('#twzipcode').twzipcode({
+      'css': [
+        'pulldownMenu', //縣市
+        'pulldownMenu', // 鄉鎮市區
+        'addr-zip' // 郵遞區號
+      ]
+    });
+
+    $("#twzipcode").twzipcode('set', {
+      'county': '臺北市',
+      'district': '信義區',
+      'zipcode': 110
+    });    
+    // 初始化 TWZIPCODE : 結束
+    
+    // 處理輸入參數
+    var inputParam = inputParamString.split("&");
+    // inputParam[0]="?displayName=..."
+    // inputParam[1]="userId=..."
+    // inputParam[2]="pictureUrl=..."
+    
+    var displayName = inputParam[0].split("=");
+    var userId      = inputParam[1].split("=");
+    var pictureUrl  = inputParam[2].split("=");    
+    
+    console.log(displayName, userId, pictureUrl);
+    
+    if (userId[0] == "userId") {
+      console.log("valid UserId ", userId[1]);
+      
+      checkUserIdExist();
+     
+      $("#memberName").val(decodeURI(displayName[1]));
+
+
+    } else {
+      $("#memberForm").hide();
+      $("#ErrorMessage").css("display", "block");   
+      alert("No LINE ID!!");   
+    }
+
+
+    //console.log($("#twzipcode").twzipcode('get', ['county', 'district']));
+
+    function checkUserIdExist() {
+      //Call API:00 檢查 userId 有沒有重複參加 */
+       
+      paramToSend = "?API=00" + "&UserId=" + userId[1];
+
+      var request = new XMLHttpRequest()
+      //request.open('GET', 'https://api-ugym-courses.herokuapp.com/'+paramToSend, true)
+      request.open('GET', 'http://localhost:5000'+paramToSend, true)
+      
+      request.onload = function() {
+        console.log(this.response);
+        if (this.response == "API:00 會員已存在") {
+          alert("您以前已經加入會員!");     
+          $("#memberForm").hide();
+          $("#alreadyMessage").css("display", "block");  
+        }
+      }
+
+      // Send API request 
+      request.send();      
+    }
+    
+    function addConfirm() {
+      console.log("addConfirm");
+      // TODO: 檢查資料格式     
+      if ($("#memberName").val() == "") {
+        alert("姓名為必填!");
+        return 0;
+      }
+      
+      countyDistrict = $("#twzipcode").twzipcode('get', ['county', 'district']);
+      
+      paramToSend = "?API=01"
+                  + "&UserId=" + userId[1] 
+                  + "&Name="   + $("#memberName").val()
+                  + "&Gender=" + $("#memberGender").val()  
+                  + "&Birth="  + $("#memberBirth").val()
+                  + "&Phone="  + $("#memberPhoneNum").val()
+                  + "&ID="     + $("#memberIdNum").val()    + "\n"
+                  + "&Address="+ countyDistrict[0] + " " +countyDistrict[1] + " " + $("#memberAddress").val()                
+      ;
+      
+      var profile = "請確認會員資料:\n"
+                  + "    會員姓名: " + $("#memberName").val()     + "\n"
+                  + "    會員姓別: " + $("#memberGender").val()   + "\n"   
+                  + "    會員生日: " + $("#memberBirth").val()    + "\n"
+                  + "    會員電話: " + $("#memberPhoneNum").val() + "\n"    
+                  + "    身分證號: " + $("#memberIdNum").val()    + "\n"
+                  + "    會員地址: " + countyDistrict[0] + " " +countyDistrict[1] + " " + $("#memberAddress").val()                
+      ;
+      
+      console.log(paramToSend);
+      
+      //window.location("https://member-join-form-for-line.herokuapp.com/"+paramToSend);
+      //webCourseAPI();      
+      
+      if (confirm(profile)) {
+        
+        // call API:01
+        var request = new XMLHttpRequest()
+        //request.open('GET', 'https://api-ugym-courses.herokuapp.com/'+paramToSend, true)
+        request.open('GET', 'http://localhost:5000'+paramToSend, true)
+
+        request.onload = function() {
+          console.log(this.response);
+
+            if (this.response !="API:01 會員寫入成功") alert("會員加入失敗，請洽管理員")                
+            $("#memberForm").hide();
+            $("#finishMessage").css("display", "block");        
+        }
+
+        // Send request
+        request.send();
+          
+      };
+
+    }; 
+    
+//    http://localhost:5000/?API=01&UserId=line12345&Name=%E5%B0%8F%E9%84%AD&Gender=%E7%94%B7&Birth=2019-01-01&Phone=095555555&ID=A120000000%20&Address=%E6%96%B0%E7%AB%B9%E5%B8%82%20%E6%9D%B1%E5%8D%80%20%E4%B8%AD%E5%A4%AE%E8%B7%AF
+//    function webCourseAPI () {
+//      var request = new XMLHttpRequest()
+//      request.open('GET', 'https://member-join-form-for-line.herokuapp.com/'+paramToSend, true)
+//
+//      request.onload = function() {
+//        console.log(this.response);
+//      }
+//
+//      // Send request
+//      request.send();
+//    }    
+    
+  </script>
+</body>
+
+</html>
